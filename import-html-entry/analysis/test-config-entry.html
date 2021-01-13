@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>test-config-entry</title>
+</head>
+<body>
+<script type="module">
+  import { importEntry } from "../src/index.js";
+  const config = {
+    styles: ['http://kuitos.me/umi.css', 'http://kuitos.me/test.css'],
+    scripts: ['http://kuitos.me/umi.js', 'http://kuitos.me/test.js'],
+    html: '<main>config entry test</main>',
+  };
+
+  (async () => {
+    const res = await importEntry(config, { fetch: async url => ({ text: async () => url }) });
+    // console.log(res);
+    // console.log(res.template);
+  })();
+</script>
+</body>
+</html>
