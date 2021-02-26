@@ -61,24 +61,25 @@ export default function processTpl(tpl, baseURI) {
 	const styles = [];
 	let entry = null;
 	const moduleSupport = isModuleScriptSupported();
-
+	// 字符串按规则替换
 	const template = tpl
 
 		/*
 		remove html comment first
 		*/
+		// 删除注释
 		.replace(HTML_COMMENT_REGEX, '')
-
+		// 匹配闭合标签
 		.replace(LINK_TAG_REGEX, match => {
 			/*
 			change the css link
 			*/
 			const styleType = !!match.match(STYLE_TYPE_REGEX);
 			if (styleType) {
-
+				// 样式格式
 				const styleHref = match.match(STYLE_HREF_REGEX);
 				const styleIgnore = match.match(LINK_IGNORE_REGEX);
-
+				// 如果是远端样式
 				if (styleHref) {
 
 					const href = styleHref && styleHref[2];
@@ -90,7 +91,7 @@ export default function processTpl(tpl, baseURI) {
 					if (styleIgnore) {
 						return genIgnoreAssetReplaceSymbol(newHref);
 					}
-
+					// 需要获取的样式列表
 					styles.push(newHref);
 					return genLinkReplaceSymbol(newHref);
 				}
@@ -110,6 +111,7 @@ export default function processTpl(tpl, baseURI) {
 			}
 			return match;
 		})
+		// 处理脚本
 		.replace(ALL_SCRIPT_REGEX, (match, scriptTag) => {
 			const scriptIgnore = scriptTag.match(SCRIPT_IGNORE_REGEX);
 			const moduleScriptIgnore =
@@ -188,6 +190,7 @@ export default function processTpl(tpl, baseURI) {
 		return !!script;
 	});
 
+	// 返回模版、脚本列表、样式列表、入口
 	return {
 		template,
 		scripts,

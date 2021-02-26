@@ -82,11 +82,13 @@ export function getInlineCode(match) {
 }
 
 export function defaultGetPublicPath(entry) {
+	// 如果配置入口是个对象，直接返回 /
 	if (typeof entry === 'object') {
 		return '/';
 	}
 	try {
 		// URL 构造函数不支持使用 // 前缀的 url
+		// 如果使用的//补齐协议
 		const { origin, pathname } = new URL(entry.startsWith('//') ? `${location.protocol}${entry}` : entry, location.href);
 		const paths = pathname.split('/');
 		// 移除最后一个元素
@@ -120,6 +122,7 @@ export const requestIdleCallback =
 	};
 
 export function readResAsString(response, autoDetectCharset) {
+	// 没有下述任何逻辑，直接返回文本
 	// 未启用自动检测
 	if (!autoDetectCharset) {
 		return response.text();
@@ -144,6 +147,7 @@ export function readResAsString(response, autoDetectCharset) {
 	const parts = contentType.split(';');
 	if (parts.length === 2) {
 		const [, value] = parts[1].split('=');
+		// 处理编码格式
 		const encoding = value && value.trim();
 		if (encoding) {
 			charset = encoding;

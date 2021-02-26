@@ -137,6 +137,7 @@ const supportsUserTiming =
  * @returns {Promise<unknown>}
  */
 export function execScripts(entry, scripts, proxy = window, opts = {}) {
+	// 默认配置
 	const {
 		fetch = defaultFetch, strictGlobal = false, success, error = () => {
 		}, beforeExec = () => {
@@ -145,14 +146,17 @@ export function execScripts(entry, scripts, proxy = window, opts = {}) {
 	} = opts;
 
 	return getExternalScripts(scripts, fetch, error)
+		// 获取脚本的内容
 		.then(scriptsText => {
 
 			const geval = (scriptSrc, inlineScript) => {
+				// 源码
 				const rawCode = beforeExec(inlineScript, scriptSrc) || inlineScript;
+				// 获取可执行脚本代码
 				const code = getExecutableScript(scriptSrc, rawCode, proxy, strictGlobal);
-
+				// 执行脚本代码
 				(0, eval)(code);
-
+				// 钩子
 				afterExec(inlineScript, scriptSrc);
 			};
 
@@ -161,6 +165,7 @@ export function execScripts(entry, scripts, proxy = window, opts = {}) {
 				const markName = `Evaluating script ${scriptSrc}`;
 				const measureName = `Evaluating Time Consuming: ${scriptSrc}`;
 
+				// 性能
 				if (process.env.NODE_ENV === 'development' && supportsUserTiming) {
 					performance.mark(markName);
 				}
@@ -182,6 +187,7 @@ export function execScripts(entry, scripts, proxy = window, opts = {}) {
 					if (typeof inlineScript === 'string') {
 						try {
 							// bind window.proxy to change `this` reference in script
+							// 直接执行脚本
 							geval(scriptSrc, inlineScript);
 						} catch (e) {
 							// consistent with browser behavior, any independent script evaluation error should not block the others
@@ -190,6 +196,7 @@ export function execScripts(entry, scripts, proxy = window, opts = {}) {
 					} else {
 						// external script marked with async
 						inlineScript.async && inlineScript?.content
+							// 下载完后执行
 							.then(downloadedScriptText => geval(inlineScript.src, downloadedScriptText))
 							.catch(e => {
 								throwNonBlockingError(e, `[import-html-entry]: error occurs while executing async script ${inlineScript.src}`);
@@ -204,6 +211,7 @@ export function execScripts(entry, scripts, proxy = window, opts = {}) {
 				}
 			}
 
+			// 递归
 			function schedule(i, resolvePromise) {
 
 				if (i < scripts.length) {
@@ -213,6 +221,7 @@ export function execScripts(entry, scripts, proxy = window, opts = {}) {
 					exec(scriptSrc, inlineScript, resolvePromise);
 					// resolve the promise while the last script executed and entry not provided
 					if (!entry && i === scripts.length - 1) {
+						// 全部执行完后成功回调
 						resolvePromise();
 					} else {
 						schedule(i + 1, resolvePromise);
@@ -231,15 +240,18 @@ export default function importHTML(url, opts = {}) {
 	let getTemplate = defaultGetTemplate;
 
 	// compatible with the legacy importHTML api
+	// 如果opts是函数，就当做fetch函数处理
 	if (typeof opts === 'function') {
 		fetch = opts;
 	} else {
 		// fetch option is availble
 		if (opts.fetch) {
+			// 如果是函数，就当做fetch函数处理
 			// fetch is a funciton
 			if (typeof opts.fetch === 'function') {
 				fetch = opts.fetch;
 			} else { // configuration
+				// fn 是函数当做fetch处理
 				fetch = opts.fetch.fn || defaultFetch;
 				autoDecodeResponse = !!opts.fetch.autoDecodeResponse;
 			}
@@ -247,12 +259,14 @@ export default function importHTML(url, opts = {}) {
 		getPublicPath = opts.getPublicPath || opts.getDomain || defaultGetPublicPath;
 		getTemplate = opts.getTemplate || defaultGetTemplate;
 	}
-
+	// 如果有缓存，则直接返回
 	return embedHTMLCache[url] || (embedHTMLCache[url] = fetch(url)
+	// 将响应转成字符串
 		.then(response => readResAsString(response, autoDecodeResponse))
 		.then(html => {
 
 			const assetPublicPath = getPublicPath(url);
+			// 通过 processTpl 处理获取模版字符串、脚本、入口、样式等
 			const { template, scripts, entry, styles } = processTpl(getTemplate(html), assetPublicPath);
 
 			return getEmbedHTML(template, styles, { fetch }).then(embedHTML => ({
@@ -276,13 +290,14 @@ export default function importHTML(url, opts = {}) {
 }
 
 export function importEntry(entry, opts = {}) {
+	// 获取配置相关
 	const { fetch = defaultFetch, getTemplate = defaultGetTemplate } = opts;
 	const getPublicPath = opts.getPublicPath || opts.getDomain || defaultGetPublicPath;
 
 	if (!entry) {
 		throw new SyntaxError('entry should not be empty!');
 	}
-
+	// 如果 enrty 是字符串，通过 importHTML 获取输出结果
 	// html entry
 	if (typeof entry === 'string') {
 		return importHTML(entry, {
@@ -291,19 +306,26 @@ export function importEntry(entry, opts = {}) {
 			getTemplate,
 		});
 	}
-
+	// 如果指定了要加载的脚本或样式资源
 	// config entry
 	if (Array.isArray(entry.scripts) || Array.isArray(entry.styles)) {
 
 		const { scripts = [], styles = [], html = '' } = entry;
+		// 拼接 html 和 styles
 		const setStylePlaceholder2HTML = tpl => styles.reduceRight((html, styleSrc) => `${genLinkReplaceSymbol(styleSrc)}${html}`, tpl);
+		// 再拼接 scripts
 		const setScriptPlaceholder2HTML = tpl => scripts.reduce((html, scriptSrc) => `${html}${genScriptReplaceSymbol(scriptSrc)}`, tpl);
-
+		// 通过 getEmbedHTML 生成拼接后的模版字符串，返回一个对应，涵盖模版内容和下面的方法及参数
 		return getEmbedHTML(getTemplate(setScriptPlaceholder2HTML(setStylePlaceholder2HTML(html))), styles, { fetch }).then(embedHTML => ({
+			// 模版字符串
 			template: embedHTML,
+			// 获取公共路径
 			assetPublicPath: getPublicPath(entry),
+			// 获取外部脚本
 			getExternalScripts: () => getExternalScripts(scripts, fetch),
+			// 获取外部样式表
 			getExternalStyleSheets: () => getExternalStyleSheets(styles, fetch),
+			// 执行脚本
 			execScripts: (proxy, strictGlobal, execScriptsHooks = {}) => {
 				if (!scripts.length) {
 					return Promise.resolve();
