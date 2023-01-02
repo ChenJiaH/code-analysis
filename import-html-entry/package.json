@@ -56,8 +56,8 @@
     "iconv-lite": "^0.6.2",
     "jest": "^24.9.0",
     "np": "^7.6.2",
-    "webpack": "^4.17.1",
-    "webpack-cli": "^3.1.0"
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.1"
   },
   "jest": {
     "globals": {
